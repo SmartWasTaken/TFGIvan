@@ -1329,6 +1329,7 @@ GameObject:
   - component: {fileID: 327826353}
   - component: {fileID: 327826352}
   - component: {fileID: 327826351}
+  - component: {fileID: 327826354}
   m_Layer: 5
   m_Name: SalirBtn
   m_TagString: Untagged
@@ -1399,7 +1400,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 327826352}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 327826354}
+        m_TargetAssemblyTypeName: BotonSalir, Assembly-CSharp-firstpass
+        m_MethodName: AlPulsarSalir
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &327826352
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1438,6 +1451,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 327826349}
   m_CullTransparentMesh: 1
+--- !u!114 &327826354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 327826349}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa7009959cbde334e8c1b9b2da0938a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -2673,6 +2698,51 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 665161788}
   m_CullTransparentMesh: 1
+--- !u!1 &709270579
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 709270581}
+  - component: {fileID: 709270580}
+  m_Layer: 0
+  m_Name: '@NetworkManager'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &709270580
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 709270579}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb063cfcf13f15c4e9272860b9248184, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  miToken: TOKEN_FALSO_EDITOR_123
+--- !u!4 &709270581
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 709270579}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.13852847, y: 1.715632, z: -9.671339}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &710472964
 GameObject:
   m_ObjectHideFlags: 0
@@ -11836,3 +11906,4 @@ SceneRoots:
   - {fileID: 96818468}
   - {fileID: 1768976757}
   - {fileID: 1581787021}
+  - {fileID: 709270581}

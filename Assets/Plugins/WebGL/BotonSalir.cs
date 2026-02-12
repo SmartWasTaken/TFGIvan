@@ -13,7 +13,6 @@ public class BotonSalir : MonoBehaviour
             JS_CerrarJuego();
 #else
         Application.Quit();
-        Debug.Log("Saliendo del juego...");
 #endif
     }
 }
