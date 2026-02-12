@@ -1,211 +1,176 @@
-using UnityEngine;
-using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
-
-public abstract class GameState
-{
-    protected GameController _ctx;
-    public GameState(GameController gc) { _ctx = gc; }
-    public virtual void Enter() { }
-    public virtual void Update() { }
-    public virtual void Exit() { }
-}
+using UnityEngine;
+using UnityEngine.UI;
+using static GameData;
 
 public class GameController : MonoBehaviour
 {
-    [Header("Referencias Generales")]
-    public CameraManager camManager;
-    public CanvasGroup blackScreenFade;
-    public Animator splashTextAnimator;
-    public AudioSource audioSource;
-    public GameObject splashTextObject;
+    [Header("Referencias Externas")]
+    public MenuController menuController;
 
-    [Header("Monitor Centro")]
-    public GameObject panelMenuPrincipal;
-    public GameObject panelPausa;
-    public GameObject panelGameHUD;
+    [Header("Paneles Principales")]
+    public GameObject panelInicio;
+    public GameObject panelAmbientacion;
+    public GameObject panelJuego;
+    public GameObject panelFeedback;
 
-    [Header("Monitor Izquierda (Opciones)")]
-    public GameObject panelBtnOpciones;
-    public GameObject panelContenidoOpciones;
+    [Header("Elementos Inicio")]
+    public Button botonIniciarJuego;
 
-    [Header("Monitor Derecha (Créditos)")]
-    public GameObject panelBtnCreditos;
-    public GameObject panelContenidoCreditos;
+    [Header("Elementos Ambientación")]
+    public TMP_Text textoAmbientacion;
+    public Button botonContinuar;
 
-    private GameState currentState;
+    [Header("Elementos Juego")]
+    public TMP_Text textoCapitulo;
+    public TMP_Text textoTitulo;
+    public TMP_Text textoContenido;
+    public TMP_InputField inputComentario;
+    public Button botonEnviar;
+
+    [Header("Opciones de Voto")]
+    public ToggleGroup grupoOpciones;
+    public Toggle toggleHumano;
+    public Toggle toggleIAFull;
+    public Toggle toggleIAPolish;
+    public Toggle toggleMixto;
+
+    [Header("Elementos Feedback")]
+    public TMP_Text textoResultado;
+    public TMP_Text textoExplicacion;
+    public Button botonSiguiente;
+
+    [Header("Panel Fin")]
+    public GameObject panelFin;
+    public TMP_Text textoFin;
+    public Button botonReiniciar;
+    public Button botonSalirFin;
+
+    private int currentTextoId = -1;
 
     void Start()
     {
-        ChangeState(new SplashState(this));
-    }
-
-    void Update()
-    {
-        if (currentState != null) currentState.Update();
-    }
-
-    public void ChangeState(GameState newState)
-    {
-        if (currentState != null) currentState.Exit();
-        currentState = newState;
-        currentState.Enter();
-    }
-
-    public void BTN_Jugar() => ChangeState(new GameplayState(this));
-
-    public void BTN_IrAOpciones() => ChangeState(new OptionsState(this, currentState));
-    public void BTN_IrACreditos() => ChangeState(new CreditsState(this, currentState));
-
-    public void BTN_VolverAtras()
-    {
-        if (currentState is OptionsState ops) ChangeState(ops.previousState);
-        else if (currentState is CreditsState creds) ChangeState(creds.previousState);
-        else ChangeState(new MainMenuState(this));
-    }
-
-    public void BTN_SalirJuego() => Application.Quit();
-    public void BTN_Reanudar() => ChangeState(new GameplayState(this));
-    public void BTN_MenuDesdeJuego() => ChangeState(new MainMenuState(this));
-    public void BTN_PausarJuego() => ChangeState(new PauseState(this));
-}
-
-public class SplashState : GameState
-{
-    bool haPulsado = false;
-    public SplashState(GameController gc) : base(gc) { }
-
-    public override void Enter()
-    {
-        _ctx.camManager.CamActivate(_ctx.camManager.camSplash);
-        if (_ctx.splashTextObject) _ctx.splashTextObject.SetActive(true);
-        _ctx.StartCoroutine(FadeIn());
-    }
-
-    public override void Update()
-    {
-        if (!haPulsado && Input.anyKeyDown) _ctx.StartCoroutine(SecuenciaInicio());
-    }
-
-    public override void Exit()
-    {
-        if (_ctx.splashTextObject) _ctx.splashTextObject.SetActive(false);
-    }
-
-    IEnumerator FadeIn()
-    {
-        if (_ctx.blackScreenFade != null)
+        if (NetworkManager.Instance != null)
         {
-            _ctx.blackScreenFade.alpha = 1;
-            while (_ctx.blackScreenFade.alpha > 0)
-            {
-                _ctx.blackScreenFade.alpha -= Time.deltaTime * 0.5f;
-                yield return null;
-            }
+            NetworkManager.Instance.OnTextoRecibido += AlRecibirTexto;
+            NetworkManager.Instance.OnFeedbackRecibido += AlRecibirFeedback;
+            NetworkManager.Instance.OnFinDelJuego += AlTerminarJuego;
+        }
+
+        botonIniciarJuego.onClick.AddListener(ComenzarJuego);
+        botonContinuar.onClick.AddListener(IrAlPanelJuego);
+        botonEnviar.onClick.AddListener(EnviarRespuesta);
+        botonSiguiente.onClick.AddListener(SiguienteCaso);
+        botonReiniciar.onClick.AddListener(ReiniciarTodo);
+        botonSalirFin.onClick.AddListener(VolverAlMenuInicio);
+
+        panelFin.SetActive(false);
+        ActivarPanel(panelInicio);
+    }
+
+    public void ComenzarJuego()
+    {
+        NetworkManager.Instance.PedirSiguienteTexto();
+    }
+
+    void AlRecibirTexto(TextoRecibidoData data)
+    {
+        currentTextoId = data.id;
+
+        textoAmbientacion.text = string.IsNullOrEmpty(data.ambientacion)
+            ? "Contexto clasificado. Analice el texto directamente."
+            : data.ambientacion;
+
+        textoCapitulo.text = $"CAPÍTULO {data.orden_capitulo}: {data.nombre_capitulo}";
+        textoTitulo.text = data.titulo;
+        textoContenido.text = data.contenido;
+
+        inputComentario.text = "";
+        grupoOpciones.SetAllTogglesOff();
+
+        ActivarPanel(panelAmbientacion);
+        botonContinuar.interactable = true;
+    }
+
+    void AlRecibirFeedback(FeedbackRecibidoData data)
+    {
+        ActivarPanel(panelFeedback);
+
+        if (data.es_acierto)
+            textoResultado.text = "<color=green>¡CORRECTO!</color>";
+        else
+            textoResultado.text = "<color=red>INCORRECTO</color>";
+
+        textoExplicacion.text = data.explicacion_experto;
+        botonEnviar.interactable = true;
+    }
+
+    void AlTerminarJuego()
+    {
+        panelAmbientacion.SetActive(false);
+        panelJuego.SetActive(false);
+        ActivarPanel(panelFin);
+
+        if (textoFin != null)
+        {
+            textoFin.text = "¡Atención! No quedan textos pendientes. Gracias por jugar.";
         }
     }
 
-    IEnumerator SecuenciaInicio()
+    void IrAlPanelJuego()
     {
-        haPulsado = true;
-        if (_ctx.audioSource) _ctx.audioSource.Play();
-        if (_ctx.splashTextAnimator) _ctx.splashTextAnimator.SetTrigger("Confirm");
-
-        yield return new WaitForSeconds(1.5f);
-
-        _ctx.ChangeState(new MainMenuState(_ctx));
-    }
-}
-
-public class MainMenuState : GameState
-{
-    public MainMenuState(GameController gc) : base(gc) { }
-
-    public override void Enter()
-    {
-        _ctx.camManager.CamActivate(_ctx.camManager.camMainMenu);
-
-        _ctx.panelMenuPrincipal.SetActive(true);
-        if (_ctx.panelPausa) _ctx.panelPausa.SetActive(false);
-        if (_ctx.panelGameHUD) _ctx.panelGameHUD.SetActive(false);
-
-        if (_ctx.panelBtnOpciones) _ctx.panelBtnOpciones.SetActive(true);
-        if (_ctx.panelContenidoOpciones) _ctx.panelContenidoOpciones.SetActive(false);
-
-        if (_ctx.panelBtnCreditos) _ctx.panelBtnCreditos.SetActive(true);
-        if (_ctx.panelContenidoCreditos) _ctx.panelContenidoCreditos.SetActive(false);
-    }
-}
-
-public class GameplayState : GameState
-{
-    public GameplayState(GameController gc) : base(gc) { }
-
-    public override void Enter()
-    {
-        _ctx.camManager.CamActivate(_ctx.camManager.camPlayMenu);
-
-        if (_ctx.panelMenuPrincipal) _ctx.panelMenuPrincipal.SetActive(false);
-        if (_ctx.panelPausa) _ctx.panelPausa.SetActive(false);
-        if (_ctx.panelGameHUD) _ctx.panelGameHUD.SetActive(true);
-
-        if (_ctx.panelBtnOpciones) _ctx.panelBtnOpciones.SetActive(false);
-        if (_ctx.panelContenidoOpciones) _ctx.panelContenidoOpciones.SetActive(false);
-
-        if (_ctx.panelBtnCreditos) _ctx.panelBtnCreditos.SetActive(false);
-        if (_ctx.panelContenidoCreditos) _ctx.panelContenidoCreditos.SetActive(false);
+        ActivarPanel(panelJuego);
     }
 
-    public override void Update()
+    void EnviarRespuesta()
     {
-        if (Input.GetKeyDown(KeyCode.Escape)) _ctx.ChangeState(new PauseState(_ctx));
-    }
-}
+        if (!grupoOpciones.AnyTogglesOn()) return;
 
-public class PauseState : GameState
-{
-    public PauseState(GameController gc) : base(gc) { }
+        string voto = "HUM";
+        if (toggleHumano.isOn) voto = "HUM";
+        else if (toggleIAFull.isOn) voto = "IA_FULL";
+        else if (toggleIAPolish.isOn) voto = "IA_POLISH";
+        else if (toggleMixto.isOn) voto = "MIX";
 
-    public override void Enter()
-    {
-        _ctx.camManager.CamActivate(_ctx.camManager.camPlayMenu);
+        string comentario = inputComentario.text;
 
-        if (_ctx.panelGameHUD) _ctx.panelGameHUD.SetActive(false);
-        _ctx.panelMenuPrincipal.SetActive(false);
-        _ctx.panelPausa.SetActive(true);
-
-        Time.timeScale = 0;
+        botonEnviar.interactable = false;
+        NetworkManager.Instance.EnviarRespuesta(currentTextoId, voto, comentario);
     }
 
-    public override void Exit() { Time.timeScale = 1; }
-}
-
-public class OptionsState : GameState
-{
-    public GameState previousState;
-    public OptionsState(GameController gc, GameState prev) : base(gc) { previousState = prev; }
-
-    public override void Enter()
+    void SiguienteCaso()
     {
-        _ctx.camManager.CamActivate(_ctx.camManager.camOptionsMenu);
-
-        if (_ctx.panelBtnOpciones) _ctx.panelBtnOpciones.SetActive(false);
-        if (_ctx.panelContenidoOpciones) _ctx.panelContenidoOpciones.SetActive(true);
+        textoResultado.text = "Cargando...";
+        textoExplicacion.text = "";
+        NetworkManager.Instance.PedirSiguienteTexto();
     }
-}
 
-public class CreditsState : GameState
-{
-    public GameState previousState;
-    public CreditsState(GameController gc, GameState prev) : base(gc) { previousState = prev; }
-
-    public override void Enter()
+    void ActivarPanel(GameObject panelActivo)
     {
-        _ctx.camManager.CamActivate(_ctx.camManager.camCreditsMenu);
+        panelInicio.SetActive(false);
+        panelAmbientacion.SetActive(false);
+        panelJuego.SetActive(false);
+        panelFeedback.SetActive(false);
 
-        if (_ctx.panelBtnCreditos) _ctx.panelBtnCreditos.SetActive(false);
-        if (_ctx.panelContenidoCreditos) _ctx.panelContenidoCreditos.SetActive(true);
+        panelActivo.SetActive(true);
+    }
+
+    void VolverAlMenuInicio()
+    {
+        ActivarPanel(panelInicio);
+    }
+
+    void ReiniciarTodo()
+    {
+        NetworkManager.Instance.ResetearTokenYReiniciar();
+    }
+
+    public void BTN_ReiniciarBucleJuego()
+    {
+        panelFin.SetActive(false);
+        panelInicio.SetActive(true);
     }
 }

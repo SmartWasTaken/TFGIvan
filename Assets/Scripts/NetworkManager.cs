@@ -1,44 +1,146 @@
-using System.Runtime.InteropServices;
+using System;
+using System.Collections;
+using System.Text;
 using UnityEngine;
+using UnityEngine.Networking;
+using System.Runtime.InteropServices;
+using static GameData;
 
 public class NetworkManager : MonoBehaviour
 {
     public static NetworkManager Instance;
 
-    [Header("Debug")]
-    public string miToken; //guardamos el token aqui
+    private string baseUrl = "http://127.0.0.1:8000/api/";
+    private string userToken;
 
+    public event Action<TextoRecibidoData> OnTextoRecibido;
+    public event Action<FeedbackRecibidoData> OnFeedbackRecibido;
+    public event Action OnErrorRecibido;
+    public event Action OnFinDelJuego;
+
+    public UserData userConfig;
+
+    [Header("Debug")]
+    public string tokenVisible;
     [DllImport("__Internal")]
     private static extern string JS_GetToken();
 
     void Awake()
     {
-        if(Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
     void Start()
     {
-        ObtenerToken();
-    }
+        string token = "1c42206a51d7a3574202c4b0b47310b42bb4106f";
 
-    public void ObtenerToken()
-    {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        miToken = JS_GetToken();
-        Debug.Log("Token recibido " + miToken);
-#else
-        miToken = "TOKEN_FALSO_EDITOR_123";
-        Debug.Log("Usando token de preuba " + miToken);
+            try {
+                token = JS_GetToken();
+            } catch (Exception e) {
+                Debug.LogError("No se pudo obtener el token de JS: " + e.Message);
+            }
 #endif
 
+        Inicializar(token);
     }
 
+    public void Inicializar(string token)
+    {
+        this.userToken = token;
+        this.tokenVisible = token;
+        Debug.Log("NetworkManager inicializado con token: " + token);
+    }
+
+    public void PedirSiguienteTexto()
+    {
+        StartCoroutine(GetRequest("siguiente-texto/"));
+    }
+
+    public void EnviarRespuesta(int textoId, string voto, string comentario)
+    {
+        RespuestaEnviadaData data = new RespuestaEnviadaData();
+        data.texto = textoId;
+        data.voto_usuario = voto;
+        data.comentario = comentario;
+        data.nivel_confianza = 100;
+        data.tiempo_lectura_segundos = Time.timeSinceLevelLoad;
+
+        string json = JsonUtility.ToJson(data);
+        StartCoroutine(PostRequest("enviar-respuesta/", json));
+    }
+
+    IEnumerator GetRequest(string endpoint)
+    {
+        string url = baseUrl + endpoint;
+        using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
+        {
+            webRequest.SetRequestHeader("Authorization", "Token " + userToken);
+
+            if (userConfig != null && !string.IsNullOrEmpty(userConfig.nombreUsuario))
+            {
+                webRequest.SetRequestHeader("X-User-Name", userConfig.nombreUsuario);
+            }
+
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                string jsonResponse = webRequest.downloadHandler.text;
+
+                if (jsonResponse.Contains("FIN_DEL_JUEGO"))
+                {
+                    OnFinDelJuego?.Invoke();
+                }
+                else
+                {
+                    TextoRecibidoData texto = JsonUtility.FromJson<TextoRecibidoData>(jsonResponse);
+                    OnTextoRecibido?.Invoke(texto);
+                }
+            }
+            else
+            {
+                Debug.LogError("Error GET (" + url + "): " + webRequest.error);
+                OnErrorRecibido?.Invoke();
+            }
+        }
+    }
+
+    IEnumerator PostRequest(string endpoint, string jsonData)
+    {
+        string url = baseUrl + endpoint;
+        using (UnityWebRequest webRequest = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
+            webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            webRequest.downloadHandler = new DownloadHandlerBuffer();
+
+            webRequest.SetRequestHeader("Content-Type", "application/json");
+            webRequest.SetRequestHeader("Authorization", "Token " + userToken);
+
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                string jsonResponse = webRequest.downloadHandler.text;
+                FeedbackRecibidoData feedback = JsonUtility.FromJson<FeedbackRecibidoData>(jsonResponse);
+                OnFeedbackRecibido?.Invoke(feedback);
+            }
+            else
+            {
+                Debug.LogError("Error POST (" + url + "): " + webRequest.error);
+                OnErrorRecibido?.Invoke();
+            }
+        }
+    }
+
+    public void ResetearTokenYReiniciar()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    Application.ExternalEval("location.reload();"); 
+#else
+        UnityEngine.SceneManagement.SceneManager.LoadScene(0);
+#endif
+    }
 }
