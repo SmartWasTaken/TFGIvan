@@ -10,7 +10,7 @@ public class NetworkManager : MonoBehaviour
 {
     public static NetworkManager Instance;
 
-    private string baseUrl = "http://127.0.0.1:8000/api/";
+    private string baseUrl = "http://13.48.27.234:8000/api/";
     private string userToken;
 
     public event Action<TextoRecibidoData> OnTextoRecibido;
@@ -135,6 +135,7 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
+    [ContextMenu("Borrar Roken")]
     public void ResetearTokenYReiniciar()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR

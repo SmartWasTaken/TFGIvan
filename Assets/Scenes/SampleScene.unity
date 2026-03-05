@@ -4236,7 +4236,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\xBFHa sido esto redactado por IA?"
+  m_text: "\xBFSue\xF1an los LLM con crear historias?"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0651a433967c8dc438b8a71045645cf8, type: 2}
   m_sharedMaterial: {fileID: -2662220153352201380, guid: 0651a433967c8dc438b8a71045645cf8, type: 2}
@@ -4301,7 +4301,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -0.007687092, y: 0, z: 0.012089968, w: 0}
+  m_margin: {x: -0.007687092, y: 0, z: 0.012089968, w: -1.8639905}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   _SortingLayer: 0
