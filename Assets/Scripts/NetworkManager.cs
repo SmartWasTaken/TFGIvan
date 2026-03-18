@@ -18,6 +18,9 @@ public class NetworkManager : MonoBehaviour
     public event Action OnErrorRecibido;
     public event Action OnFinDelJuego;
 
+    public event Action<TutorialInfoData> OnTutorialRecibido;
+    public event Action OnTutorialCompletadoConfirmado;
+
     public UserData userConfig;
 
     [Header("Debug")]
@@ -131,6 +134,59 @@ public class NetworkManager : MonoBehaviour
             {
                 Debug.LogError("Error POST (" + url + "): " + webRequest.error);
                 OnErrorRecibido?.Invoke();
+            }
+        }
+    }
+
+    public void PedirTutorial()
+    {
+        StartCoroutine(GetTutorialRequest("tutorial/"));
+    }
+
+    public void MarcarTutorialCompletado()
+    {
+        StartCoroutine(PostTutorialCompletado("tutorial/completar/"));
+    }
+
+    IEnumerator GetTutorialRequest(string endpoint)
+    {
+        string url = baseUrl + endpoint;
+        using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
+        {
+            webRequest.SetRequestHeader("Authorization", "Token " + userToken);
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                string jsonResponse = webRequest.downloadHandler.text;
+                Debug.Log("RESPUESTA TUTORIAL DJANGO: " + jsonResponse);
+
+                TutorialInfoData tutorialData = JsonUtility.FromJson<TutorialInfoData>(jsonResponse);
+                OnTutorialRecibido?.Invoke(tutorialData);
+            }
+            else
+            {
+                Debug.LogError("Error GET Tutorial: " + webRequest.error);
+                OnErrorRecibido?.Invoke();
+            }
+        }
+    }
+
+    IEnumerator PostTutorialCompletado(string endpoint)
+    {
+        string url = baseUrl + endpoint;
+        using (UnityWebRequest webRequest = new UnityWebRequest(url, "POST"))
+        {
+            webRequest.uploadHandler = new UploadHandlerRaw(new byte[0]);
+            webRequest.downloadHandler = new DownloadHandlerBuffer();
+            webRequest.SetRequestHeader("Content-Type", "application/json");
+            webRequest.SetRequestHeader("Authorization", "Token " + userToken);
+
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                OnTutorialCompletadoConfirmado?.Invoke();
             }
         }
     }

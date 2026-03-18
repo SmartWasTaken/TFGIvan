@@ -4,6 +4,7 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using static GameData;
 
 public class GameController : MonoBehaviour
@@ -48,7 +49,21 @@ public class GameController : MonoBehaviour
     public TMP_Text textoFin;
     public Button botonReiniciar;
     public Button botonSalirFin;
+    public Button botonVerCinematica;
 
+    [Header("Panel Tutorial")]
+    public GameObject panelTutorial;
+    public TMP_Text textoTituloTutorial;
+    public TMP_Text textoContenidoTutorial;
+    public Button botonContinuarTutorial;
+    public Button botonSaltarTutorial;
+    public TMP_Text textoContadorPaginas;
+    public TMP_Text textoContadorPaginas2;
+    public Button botonRepasarTutorial;
+
+    private bool repasandoTutorial = false;
+    private PaginaTutorialData[] paginasTutorialActual;
+    private int paginaTutorialIndex = 0;
     private int currentTextoId = -1;
 
     void Start()
@@ -58,21 +73,119 @@ public class GameController : MonoBehaviour
             NetworkManager.Instance.OnTextoRecibido += AlRecibirTexto;
             NetworkManager.Instance.OnFeedbackRecibido += AlRecibirFeedback;
             NetworkManager.Instance.OnFinDelJuego += AlTerminarJuego;
+            NetworkManager.Instance.OnTutorialRecibido += AlRecibirTutorial;
         }
 
-        botonIniciarJuego.onClick.AddListener(ComenzarJuego);
-        botonContinuar.onClick.AddListener(IrAlPanelJuego);
-        botonEnviar.onClick.AddListener(EnviarRespuesta);
-        botonSiguiente.onClick.AddListener(SiguienteCaso);
-        botonReiniciar.onClick.AddListener(ReiniciarTodo);
-        botonSalirFin.onClick.AddListener(VolverAlMenuInicio);
+        if (botonRepasarTutorial != null) botonRepasarTutorial.onClick.AddListener(AlPulsarBotonRepaso);
+        if (botonContinuarTutorial != null) botonContinuarTutorial.onClick.AddListener(AvanzarPaginaTutorial);
+        if (botonSaltarTutorial != null) botonSaltarTutorial.onClick.AddListener(TerminarTutorial);
+
+        if (botonIniciarJuego != null) botonIniciarJuego.onClick.AddListener(ComenzarJuego);
+        if (botonContinuar != null) botonContinuar.onClick.AddListener(IrAlPanelJuego);
+        if (botonEnviar != null) botonEnviar.onClick.AddListener(EnviarRespuesta);
+        if (botonSiguiente != null) botonSiguiente.onClick.AddListener(SiguienteCaso);
+        if (botonReiniciar != null) botonReiniciar.onClick.AddListener(ReiniciarTodo);
+        if (botonSalirFin != null) botonSalirFin.onClick.AddListener(VolverAlMenuInicio);
+        if (botonVerCinematica != null) botonVerCinematica.onClick.AddListener(CargarCinematica);
 
         panelFin.SetActive(false);
         ActivarPanel(panelInicio);
     }
 
+    public void AlPulsarBotonRepaso()
+    {
+        if (menuController != null) menuController.BTN_IrARepasoTutorial();
+        RepasarTutorialMenu();
+    }
+
     public void ComenzarJuego()
     {
+        repasandoTutorial = false;
+        NetworkManager.Instance.PedirTutorial();
+    }
+
+    public void RepasarTutorialMenu()
+    {
+        repasandoTutorial = true;
+
+        if (paginasTutorialActual != null && paginasTutorialActual.Length > 0)
+        {
+            paginaTutorialIndex = 0;
+            MostrarPaginaTutorial();
+            ActivarPanel(panelTutorial);
+        }
+        else
+        {
+            NetworkManager.Instance.PedirTutorial();
+        }
+    }
+
+    void AlRecibirTutorial(TutorialInfoData data)
+    {
+        if (data.paginas != null && data.paginas.Length > 0)
+        {
+            paginasTutorialActual = data.paginas;
+        }
+
+        if (!repasandoTutorial && data.completado)
+        {
+            NetworkManager.Instance.PedirSiguienteTexto();
+            return;
+        }
+
+        if (paginasTutorialActual == null || paginasTutorialActual.Length == 0)
+        {
+            NetworkManager.Instance.PedirSiguienteTexto();
+            return;
+        }
+
+        paginaTutorialIndex = 0;
+        MostrarPaginaTutorial();
+        ActivarPanel(panelTutorial);
+    }
+
+    public void AvanzarPaginaTutorial()
+    {
+        paginaTutorialIndex++;
+        if (paginaTutorialIndex >= paginasTutorialActual.Length)
+        {
+            TerminarTutorial();
+        }
+        else
+        {
+            MostrarPaginaTutorial();
+        }
+    }
+
+    public void MostrarPaginaTutorial()
+    {
+        PaginaTutorialData pag = paginasTutorialActual[paginaTutorialIndex];
+
+        textoTituloTutorial.text = pag.titulo;
+        textoContenidoTutorial.text = pag.contenido;
+
+        if (textoContadorPaginas != null)
+            textoContadorPaginas.text = $"{paginaTutorialIndex + 1} / {paginasTutorialActual.Length}";
+
+        if (textoContadorPaginas2 != null)
+            textoContadorPaginas2.text = $"{paginaTutorialIndex + 1} / {paginasTutorialActual.Length}";
+
+        if (paginaTutorialIndex == paginasTutorialActual.Length - 1)
+            botonContinuarTutorial.GetComponentInChildren<TMP_Text>().text = "Comenzar";
+        else
+            botonContinuarTutorial.GetComponentInChildren<TMP_Text>().text = "Siguiente";
+    }
+
+    public void TerminarTutorial()
+    {
+        if (panelTutorial != null) panelTutorial.SetActive(false);
+
+        if (!repasandoTutorial)
+        {
+            NetworkManager.Instance.MarcarTutorialCompletado();
+        }
+
+        repasandoTutorial = false;
         NetworkManager.Instance.PedirSiguienteTexto();
     }
 
@@ -151,6 +264,7 @@ public class GameController : MonoBehaviour
     void ActivarPanel(GameObject panelActivo)
     {
         panelInicio.SetActive(false);
+        if (panelTutorial != null) panelTutorial.SetActive(false);
         panelAmbientacion.SetActive(false);
         panelJuego.SetActive(false);
         panelFeedback.SetActive(false);
@@ -172,5 +286,10 @@ public class GameController : MonoBehaviour
     {
         panelFin.SetActive(false);
         panelInicio.SetActive(true);
+    }
+
+    public void CargarCinematica()
+    {
+        SceneManager.LoadScene("CinematicaFinal");
     }
 }

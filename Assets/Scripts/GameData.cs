@@ -34,4 +34,19 @@ public class GameData : MonoBehaviour
         public string origen_real;
         public string explicacion_experto;
     }
+
+    [Serializable]
+    public class PaginaTutorialData
+    {
+        public int orden;
+        public string titulo;
+        public string contenido;
+    }
+
+    [Serializable]
+    public class TutorialInfoData
+    {
+        public bool completado;
+        public PaginaTutorialData[] paginas;
+    }
 }
