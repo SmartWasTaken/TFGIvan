@@ -724,7 +724,7 @@ VideoPlayer:
   - {fileID: 0}
   m_DirectAudioVolumes:
   - 1
-  m_Url: http://13.48.27.234/media/cinematica.mp4
+  m_Url: http://13.48.27.234:8000/media/cinematica.mp4
   m_EnabledAudioTracks: 01
   m_DirectAudioMutes: 00
   m_ControlledAudioTrackCount: 1
