@@ -10,7 +10,11 @@ public class NetworkManager : MonoBehaviour
 {
     public static NetworkManager Instance;
 
-    private string baseUrl = "http://13.48.27.234:8000/api/";
+    // La URL del servidor y el token de pruebas se leen de un ApiConfig local
+    // (Assets/Resources/Local/ApiConfig.asset), que está en .gitignore.
+    // Así ninguna dirección ni credencial real acaba en el repositorio.
+    private const string DefaultBaseUrl = "http://localhost:8000/api/";
+    private string baseUrl = DefaultBaseUrl;
     private string userToken;
 
     public event Action<TextoRecibidoData> OnTextoRecibido;
@@ -36,7 +40,21 @@ public class NetworkManager : MonoBehaviour
 
     void Start()
     {
-        string token = "1c42206a51d7a3574202c4b0b47310b42bb4106f";
+        ApiConfig config = Resources.Load<ApiConfig>("Local/ApiConfig");
+        if (config != null && !string.IsNullOrEmpty(config.baseUrl))
+        {
+            baseUrl = config.baseUrl.EndsWith("/") ? config.baseUrl : config.baseUrl + "/";
+        }
+        else
+        {
+            Debug.LogWarning("ApiConfig no encontrado en Resources/Local. Usando " + DefaultBaseUrl);
+        }
+
+        string token = "";
+#if UNITY_EDITOR
+        // Solo en el editor: token de pruebas definido en el ApiConfig local.
+        if (config != null) token = config.editorDebugToken;
+#endif
 
 #if UNITY_WEBGL && !UNITY_EDITOR
             try {
@@ -52,8 +70,10 @@ public class NetworkManager : MonoBehaviour
     public void Inicializar(string token)
     {
         this.userToken = token;
+#if UNITY_EDITOR
         this.tokenVisible = token;
-        Debug.Log("NetworkManager inicializado con token: " + token);
+#endif
+        Debug.Log("NetworkManager inicializado" + (string.IsNullOrEmpty(token) ? " (sin token)" : ""));
     }
 
     public void PedirSiguienteTexto()
@@ -191,7 +211,7 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
-    [ContextMenu("Borrar Roken")]
+    [ContextMenu("Borrar Token")]
     public void ResetearTokenYReiniciar()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
